@@ -8,7 +8,6 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~56.0.5",
     "expo-clipboard": "^56.0.3",
-    "expo-constants": "~56.0.16",
     "expo-document-picker": "^56.0.4",
     "expo-file-system": "^56.0.7",
     "expo-font": "~56.0.5",
@@ -20,8 +19,6 @@
     "expo-splash-screen": "~56.0.10",
     "expo-sqlite": "^56.0.4",
     "expo-status-bar": "~56.0.4",
-    "expo-symbols": "~56.0.5",
-    "expo-web-browser": "~56.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
@@ -37,8 +34,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "private": true

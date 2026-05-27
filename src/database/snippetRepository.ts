@@ -1,12 +1,17 @@
-import { type SQLiteDatabase } from 'expo-sqlite';
-import { Snippet, SnippetCreateInput, SnippetUpdateInput, Attachment } from '../types';
+import { type SQLiteDatabase } from "expo-sqlite";
+import {
+  Attachment,
+  Snippet,
+  SnippetCreateInput,
+  SnippetUpdateInput,
+} from "../types";
 
 export function createSnippetRepository(db: SQLiteDatabase) {
   return {
     async create(input: SnippetCreateInput): Promise<number> {
       const result = await db.runAsync(
         `INSERT INTO snippets (title, code, language, tags) VALUES (?, ?, ?, ?)`,
-        [input.title, input.code, input.language, JSON.stringify(input.tags)]
+        [input.title, input.code, input.language, JSON.stringify(input.tags)],
       );
       return result.lastInsertRowId;
     },
@@ -16,23 +21,23 @@ export function createSnippetRepository(db: SQLiteDatabase) {
       const values: (string | number)[] = [];
 
       if (input.title !== undefined) {
-        fields.push('title = ?');
+        fields.push("title = ?");
         values.push(input.title);
       }
       if (input.code !== undefined) {
-        fields.push('code = ?');
+        fields.push("code = ?");
         values.push(input.code);
       }
       if (input.language !== undefined) {
-        fields.push('language = ?');
+        fields.push("language = ?");
         values.push(input.language);
       }
       if (input.tags !== undefined) {
-        fields.push('tags = ?');
+        fields.push("tags = ?");
         values.push(JSON.stringify(input.tags));
       }
       if (input.is_favorite !== undefined) {
-        fields.push('is_favorite = ?');
+        fields.push("is_favorite = ?");
         values.push(input.is_favorite);
       }
 
@@ -40,8 +45,8 @@ export function createSnippetRepository(db: SQLiteDatabase) {
       values.push(id);
 
       await db.runAsync(
-        `UPDATE snippets SET ${fields.join(', ')} WHERE id = ?`,
-        values
+        `UPDATE snippets SET ${fields.join(", ")} WHERE id = ?`,
+        values,
       );
     },
 
@@ -52,26 +57,35 @@ export function createSnippetRepository(db: SQLiteDatabase) {
     async getById(id: number): Promise<Snippet | null> {
       return await db.getFirstAsync<Snippet>(
         `SELECT * FROM snippets WHERE id = ?`,
-        [id]
+        [id],
       );
     },
 
-    async getAll(orderBy: string = 'updated_at DESC'): Promise<Snippet[]> {
+    async getAll(orderBy: string = "updated_at DESC"): Promise<Snippet[]> {
+      const ALLOWED_ORDER = [
+        "updated_at DESC",
+        "updated_at ASC",
+        "created_at DESC",
+        "title ASC",
+      ];
+      const safeOrder = ALLOWED_ORDER.includes(orderBy)
+        ? orderBy
+        : "updated_at DESC";
       return await db.getAllAsync<Snippet>(
-        `SELECT * FROM snippets ORDER BY ${orderBy}`
+        `SELECT * FROM snippets ORDER BY ${safeOrder}`,
       );
     },
 
     async getFavorites(): Promise<Snippet[]> {
       return await db.getAllAsync<Snippet>(
-        `SELECT * FROM snippets WHERE is_favorite = 1 ORDER BY updated_at DESC`
+        `SELECT * FROM snippets WHERE is_favorite = 1 ORDER BY updated_at DESC`,
       );
     },
 
     async toggleFavorite(id: number): Promise<void> {
       await db.runAsync(
         `UPDATE snippets SET is_favorite = CASE WHEN is_favorite = 1 THEN 0 ELSE 1 END, updated_at = datetime('now') WHERE id = ?`,
-        [id]
+        [id],
       );
     },
 
@@ -83,28 +97,33 @@ export function createSnippetRepository(db: SQLiteDatabase) {
          INNER JOIN snippets_fts fts ON s.id = fts.rowid 
          WHERE snippets_fts MATCH ? 
          ORDER BY rank`,
-        [`"${searchTerm}"*`]
+        [`"${searchTerm}"*`],
       );
     },
 
     async getByLanguage(language: string): Promise<Snippet[]> {
       return await db.getAllAsync<Snippet>(
         `SELECT * FROM snippets WHERE language = ? ORDER BY updated_at DESC`,
-        [language]
+        [language],
       );
     },
 
     async getByTag(tag: string): Promise<Snippet[]> {
       return await db.getAllAsync<Snippet>(
         `SELECT * FROM snippets WHERE tags LIKE ? ORDER BY updated_at DESC`,
-        [`%"${tag}"%`]
+        [`%"${tag}"%`],
       );
     },
 
-    async addAttachment(snippetId: number, filePath: string, fileName: string, fileType: string): Promise<number> {
+    async addAttachment(
+      snippetId: number,
+      filePath: string,
+      fileName: string,
+      fileType: string,
+    ): Promise<number> {
       const result = await db.runAsync(
         `INSERT INTO attachments (snippet_id, file_path, file_name, file_type) VALUES (?, ?, ?, ?)`,
-        [snippetId, filePath, fileName, fileType]
+        [snippetId, filePath, fileName, fileType],
       );
       return result.lastInsertRowId;
     },
@@ -112,7 +131,7 @@ export function createSnippetRepository(db: SQLiteDatabase) {
     async getAttachments(snippetId: number): Promise<Attachment[]> {
       return await db.getAllAsync<Attachment>(
         `SELECT * FROM attachments WHERE snippet_id = ? ORDER BY created_at DESC`,
-        [snippetId]
+        [snippetId],
       );
     },
 
@@ -122,23 +141,28 @@ export function createSnippetRepository(db: SQLiteDatabase) {
 
     async getCount(): Promise<number> {
       const result = await db.getFirstAsync<{ count: number }>(
-        `SELECT COUNT(*) as count FROM snippets`
+        `SELECT COUNT(*) as count FROM snippets`,
       );
       return result?.count ?? 0;
     },
 
     async getAllTags(): Promise<string[]> {
       const snippets = await db.getAllAsync<{ tags: string }>(
-        `SELECT DISTINCT tags FROM snippets WHERE tags != '[]'`
+        `SELECT DISTINCT tags FROM snippets WHERE tags != '[]'`,
       );
       const tagSet = new Set<string>();
-      snippets.forEach(s => {
+      snippets.forEach((s) => {
         try {
           const parsed: string[] = JSON.parse(s.tags);
-          parsed.forEach(t => tagSet.add(t));
+          parsed.forEach((t) => tagSet.add(t));
         } catch {}
       });
       return Array.from(tagSet).sort();
+    },
+
+    async clearAll(): Promise<void> {
+      await db.runAsync(`DELETE FROM attachments`);
+      await db.runAsync(`DELETE FROM snippets`);
     },
   };
 }

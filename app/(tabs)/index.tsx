@@ -1,30 +1,38 @@
-import React, { useState, useCallback } from 'react';
-import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useDatabase } from '../../src/context/DatabaseContext';
-import { useTheme } from '../../src/context/ThemeContext';
-import { Snippet } from '../../src/types';
-import { SnippetCard } from '../../src/components/SnippetCard';
-import { SearchBar } from '../../src/components/SearchBar';
-import { EmptyState } from '../../src/components/EmptyState';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import { EmptyState } from "../../src/components/EmptyState";
+import { SearchBar } from "../../src/components/SearchBar";
+import { SnippetCard } from "../../src/components/SnippetCard";
+import { STORAGE_KEYS } from "../../src/constants";
+import { useDatabase } from "../../src/context/DatabaseContext";
+import { useTheme } from "../../src/context/ThemeContext";
+import { Snippet } from "../../src/types";
 
 export default function HomeScreen() {
   const router = useRouter();
   const db = useDatabase();
   const { isDark } = useTheme();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   const loadSnippets = useCallback(async () => {
     try {
-      const results = searchQuery.trim()
-        ? await db.search(searchQuery)
-        : await db.getAll();
-      setSnippets(results);
+      if (searchQuery.trim()) {
+        const results = await db.search(searchQuery);
+        setSnippets(results);
+      } else {
+        const sortOrder =
+          (await AsyncStorage.getItem(STORAGE_KEYS.SORT_ORDER)) ||
+          "updated_at DESC";
+        const results = await db.getAll(sortOrder);
+        setSnippets(results);
+      }
     } catch (e) {
-      console.error('Failed to load snippets:', e);
+      console.error("Failed to load snippets:", e);
     } finally {
       setLoading(false);
     }
@@ -33,7 +41,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSnippets();
-    }, [loadSnippets])
+    }, [loadSnippets]),
   );
 
   const handleToggleFavorite = async (id: number) => {
@@ -42,7 +50,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#030712' : '#f3f4f6' }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#030712" : "#f3f4f6" },
+      ]}
+    >
       <SearchBar value={searchQuery} onChangeText={setSearchQuery} />
 
       <FlatList
@@ -59,22 +72,24 @@ export default function HomeScreen() {
           !loading ? (
             <EmptyState
               icon="code-slash-outline"
-              title={searchQuery ? 'No Results' : 'No Snippets Yet'}
+              title={searchQuery ? "No Results" : "No Snippets Yet"}
               message={
                 searchQuery
-                  ? 'Try a different search term'
-                  : 'Tap the + button to create your first code snippet'
+                  ? "Try a different search term"
+                  : "Tap the + button to create your first code snippet"
               }
             />
           ) : null
         }
-        contentContainerStyle={snippets.length === 0 ? styles.emptyList : styles.list}
+        contentContainerStyle={
+          snippets.length === 0 ? styles.emptyList : styles.list
+        }
         showsVerticalScrollIndicator={false}
       />
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push('/snippet/create')}
+        onPress={() => router.push("/snippet/create")}
         activeOpacity={0.8}
       >
         <Ionicons name="add" size={28} color="#fff" />
@@ -88,17 +103,17 @@ const styles = StyleSheet.create({
   list: { paddingBottom: 80 },
   emptyList: { flex: 1 },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     right: 20,
     bottom: 20,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#3b82f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#3b82f6",
+    justifyContent: "center",
+    alignItems: "center",
     elevation: 6,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

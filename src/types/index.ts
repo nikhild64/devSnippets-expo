@@ -41,14 +41,8 @@ export interface FileItem {
   modifiedAt?: string;
 }
 
-export type ExportFormat = 'txt' | 'js' | 'json';
+export type ExportFormat = "txt" | "js" | "json";
 
-export type AIAction = 'explain' | 'summarize' | 'improve';
+export type AIAction = "explain" | "summarize" | "improve";
 
-export interface AIResponse {
-  action: AIAction;
-  content: string;
-  timestamp: string;
-}
-
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = "light" | "dark" | "system";
