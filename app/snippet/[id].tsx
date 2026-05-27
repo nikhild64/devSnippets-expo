@@ -94,13 +94,12 @@ export default function SnippetDetailScreen() {
     loadSnippet();
   };
 
-  const handleAttachScreenshot = async () => {
+  const pickFromLibrary = async () => {
     if (!snippet) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
     });
-
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       const fileName = `screenshot_${Date.now()}.jpg`;
@@ -108,6 +107,37 @@ export default function SnippetDetailScreen() {
       await db.addAttachment(snippet.id, savedPath, fileName, "image");
       loadSnippet();
     }
+  };
+
+  const takePhoto = async () => {
+    if (!snippet) return;
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission Required",
+        "Camera access is needed to take photos.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const fileName = `photo_${Date.now()}.jpg`;
+      const savedPath = await saveAttachment(snippet.id, asset.uri, fileName);
+      await db.addAttachment(snippet.id, savedPath, fileName, "image");
+      loadSnippet();
+    }
+  };
+
+  const handleAttachScreenshot = () => {
+    if (!snippet) return;
+    Alert.alert("Add Photo", "Choose a source", [
+      { text: "Camera", onPress: takePhoto },
+      { text: "Photo Library", onPress: pickFromLibrary },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const handleDeleteAttachment = (att: Attachment) => {
@@ -282,6 +312,32 @@ export default function SnippetDetailScreen() {
                 {snippet.language}
               </Text>
             </View>
+            {snippet.folder_path ? (
+              <View
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: isDark ? "#3b2e1a" : "#fef3c7",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                  },
+                ]}
+              >
+                <Ionicons name="folder" size={12} color="#f59e0b" />
+                <Text
+                  style={{
+                    color: isDark ? "#fbbf24" : "#b45309",
+                    fontSize: 12,
+                    fontWeight: "500",
+                  }}
+                  numberOfLines={1}
+                >
+                  {snippet.folder_path.replace(/\/$/, "").split("/").pop() ||
+                    "Files"}
+                </Text>
+              </View>
+            ) : null}
             {tags.map((tag) => (
               <View
                 key={tag}

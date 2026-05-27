@@ -1,7 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SECURE_KEYS } from '../constants';
-import { AIAction } from '../types';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as SecureStore from "expo-secure-store";
+import { SECURE_KEYS } from "../constants";
+import { AIAction } from "../types";
 
 const PROMPTS: Record<AIAction, (code: string, language: string) => string> = {
   explain: (code, language) =>
@@ -27,29 +27,50 @@ export async function deleteApiKey(): Promise<void> {
 export async function generateAIResponse(
   code: string,
   language: string,
-  action: AIAction
+  action: AIAction,
 ): Promise<string> {
   const apiKey = await getApiKey();
   if (!apiKey) {
-    throw new Error('API key not configured. Please add your Gemini API key in Settings.');
+    throw new Error(
+      "API key not configured. Please add your Gemini API key in Settings.",
+    );
   }
 
+  console.log("[AI] API key found, length:", apiKey.length);
+  console.log("[AI] Action:", action, "| Language:", language);
+
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
   const prompt = PROMPTS[action](code, language);
 
   try {
+    console.log("[AI] Sending request to Gemini...");
     const result = await model.generateContent(prompt);
+    console.log("[AI] Response received successfully");
     const response = result.response;
     return response.text();
   } catch (error: any) {
-    if (error?.message?.includes('API_KEY_INVALID')) {
-      throw new Error('Invalid API key. Please check your Gemini API key in Settings.');
+    console.error("[AI] Error caught:", error);
+    console.error("[AI] Error message:", error?.message);
+    console.error("[AI] Error name:", error?.name);
+    console.error("[AI] Error stack:", error?.stack);
+
+    if (error?.message?.includes("API_KEY_INVALID")) {
+      throw new Error(
+        "Invalid API key. Please check your Gemini API key in Settings.",
+      );
     }
-    if (error?.message?.includes('NETWORK') || error?.message?.includes('fetch')) {
-      throw new Error('Network error. AI features require an internet connection.');
+    if (
+      error?.message?.includes("Failed to fetch") ||
+      error?.message?.includes("Network request failed")
+    ) {
+      throw new Error(
+        "Network error. AI features require an internet connection.",
+      );
     }
-    throw new Error(`AI generation failed: ${error?.message || 'Unknown error'}`);
+    throw new Error(
+      `AI generation failed: ${error?.message || "Unknown error"}`,
+    );
   }
 }

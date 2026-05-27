@@ -10,8 +10,14 @@ export function createSnippetRepository(db: SQLiteDatabase) {
   return {
     async create(input: SnippetCreateInput): Promise<number> {
       const result = await db.runAsync(
-        `INSERT INTO snippets (title, code, language, tags) VALUES (?, ?, ?, ?)`,
-        [input.title, input.code, input.language, JSON.stringify(input.tags)],
+        `INSERT INTO snippets (title, code, language, tags, folder_path) VALUES (?, ?, ?, ?, ?)`,
+        [
+          input.title,
+          input.code,
+          input.language,
+          JSON.stringify(input.tags),
+          input.folder_path ?? null,
+        ],
       );
       return result.lastInsertRowId;
     },
@@ -39,6 +45,10 @@ export function createSnippetRepository(db: SQLiteDatabase) {
       if (input.is_favorite !== undefined) {
         fields.push("is_favorite = ?");
         values.push(input.is_favorite);
+      }
+      if (input.folder_path !== undefined) {
+        fields.push("folder_path = ?");
+        values.push(input.folder_path ?? "");
       }
 
       fields.push("updated_at = datetime('now')");
@@ -112,6 +122,13 @@ export function createSnippetRepository(db: SQLiteDatabase) {
       return await db.getAllAsync<Snippet>(
         `SELECT * FROM snippets WHERE tags LIKE ? ORDER BY updated_at DESC`,
         [`%"${tag}"%`],
+      );
+    },
+
+    async getByFolderPath(folderPath: string): Promise<Snippet | null> {
+      return await db.getFirstAsync<Snippet>(
+        `SELECT * FROM snippets WHERE folder_path = ? LIMIT 1`,
+        [folderPath],
       );
     },
 

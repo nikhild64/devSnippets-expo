@@ -1,35 +1,39 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { EmptyState } from "../../src/components/EmptyState";
 import { FileItemRow } from "../../src/components/FileItemRow";
 import { APP_DIRECTORIES } from "../../src/constants";
+import { useDatabase } from "../../src/context/DatabaseContext";
 import { useTheme } from "../../src/context/ThemeContext";
 import {
-    copyItem,
-    createDirectory,
-    deleteItem,
-    downloadFile,
-    initAppDirectories,
-    listFiles,
-    moveItem
+  copyItem,
+  createDirectory,
+  deleteItem,
+  downloadFile,
+  initAppDirectories,
+  listFiles,
+  moveItem,
 } from "../../src/services/fileService";
 import { FileItem } from "../../src/types";
 
 export default function FilesScreen() {
   const { isDark } = useTheme();
+  const router = useRouter();
+  const db = useDatabase();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [currentPath, setCurrentPath] = useState(
     `${FileSystem.documentDirectory}${APP_DIRECTORIES.FILES}/`,
@@ -53,6 +57,9 @@ export default function FilesScreen() {
   const [downloadFilename, setDownloadFilename] = useState("");
   const [downloading, setDownloading] = useState(false);
 
+  // FAB menu state
+  const [showFabMenu, setShowFabMenu] = useState(false);
+
   const basePath = `${FileSystem.documentDirectory}${APP_DIRECTORIES.FILES}/`;
 
   const loadFiles = useCallback(async () => {
@@ -67,9 +74,21 @@ export default function FilesScreen() {
     }, [loadFiles]),
   );
 
-  const navigateToFolder = (item: FileItem) => {
+  const navigateToFolder = async (item: FileItem) => {
     if (item.isDirectory) {
       setCurrentPath(item.path + "/");
+    } else {
+      // Try to find a snippet linked to this folder
+      const folderPath = currentPath;
+      const snippet = await db.getByFolderPath(folderPath);
+      if (snippet) {
+        router.push(`/snippet/${snippet.id}`);
+      } else {
+        Alert.alert(
+          "No Linked Snippet",
+          "This file is not linked to a snippet.",
+        );
+      }
     }
   };
 
@@ -166,6 +185,37 @@ export default function FilesScreen() {
     const relative = pickerPath.replace(basePath, "");
     if (!relative) return "Files";
     return `Files/${relative.replace(/\/$/, "")}`;
+  };
+
+  // New folder inside picker
+  const [showPickerNewFolder, setShowPickerNewFolder] = useState(false);
+  const [pickerNewFolderName, setPickerNewFolderName] = useState("");
+
+  const handleCreatePickerFolder = async () => {
+    if (!pickerNewFolderName.trim()) return;
+    const newPath = `${pickerPath}${pickerNewFolderName.trim()}`;
+    await createDirectory(newPath);
+    setPickerNewFolderName("");
+    setShowPickerNewFolder(false);
+    const items = await listFiles(pickerPath);
+    setPickerFolders(items.filter((i) => i.isDirectory));
+  };
+
+  // Import file flow
+  const handleImportFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const fileName = asset.name || `import_${Date.now()}`;
+        const destination = `${currentPath}${fileName}`;
+        await FileSystem.copyAsync({ from: asset.uri, to: destination });
+        loadFiles();
+        Alert.alert("Success", `Imported "${fileName}" successfully.`);
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Failed to import file.");
+    }
   };
 
   // Download flow
@@ -268,19 +318,113 @@ export default function FilesScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* FAB - New Folder */}
+      {/* FAB Menu */}
+      {showFabMenu && (
+        <>
+          <TouchableOpacity
+            style={styles.fabOverlay}
+            activeOpacity={1}
+            onPress={() => setShowFabMenu(false)}
+          />
+          <View style={styles.fabMenuContainer}>
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              onPress={() => {
+                setShowFabMenu(false);
+                setShowNewFolderModal(true);
+              }}
+            >
+              <View
+                style={[styles.fabMenuIcon, { backgroundColor: "#f59e0b" }]}
+              >
+                <Ionicons name="folder" size={18} color="#fff" />
+              </View>
+              <Text
+                style={[
+                  styles.fabMenuLabel,
+                  { color: isDark ? "#f9fafb" : "#111827" },
+                ]}
+              >
+                New Folder
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              onPress={() => {
+                setShowFabMenu(false);
+                router.push({
+                  pathname: "/snippet/create",
+                  params: { folder: currentPath },
+                });
+              }}
+            >
+              <View
+                style={[styles.fabMenuIcon, { backgroundColor: "#10b981" }]}
+              >
+                <Ionicons name="code-slash" size={18} color="#fff" />
+              </View>
+              <Text
+                style={[
+                  styles.fabMenuLabel,
+                  { color: isDark ? "#f9fafb" : "#111827" },
+                ]}
+              >
+                Create Snippet
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              onPress={() => {
+                setShowFabMenu(false);
+                handleImportFile();
+              }}
+            >
+              <View
+                style={[styles.fabMenuIcon, { backgroundColor: "#8b5cf6" }]}
+              >
+                <Ionicons name="push" size={18} color="#fff" />
+              </View>
+              <Text
+                style={[
+                  styles.fabMenuLabel,
+                  { color: isDark ? "#f9fafb" : "#111827" },
+                ]}
+              >
+                Import File
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fabMenuItem}
+              onPress={() => {
+                setShowFabMenu(false);
+                setShowDownloadModal(true);
+              }}
+            >
+              <View
+                style={[styles.fabMenuIcon, { backgroundColor: "#3b82f6" }]}
+              >
+                <Ionicons name="cloud-download" size={18} color="#fff" />
+              </View>
+              <Text
+                style={[
+                  styles.fabMenuLabel,
+                  { color: isDark ? "#f9fafb" : "#111827" },
+                ]}
+              >
+                Download URL
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => setShowNewFolderModal(true)}
+        onPress={() => setShowFabMenu(!showFabMenu)}
         activeOpacity={0.8}
       >
-        <Ionicons name="folder-open" size={22} color="#fff" />
-        <Ionicons
-          name="add"
-          size={14}
-          color="#fff"
-          style={{ position: "absolute", right: 12, bottom: 12 }}
-        />
+        <Ionicons name={showFabMenu ? "close" : "add"} size={28} color="#fff" />
       </TouchableOpacity>
 
       {/* New Folder Modal */}
@@ -482,6 +626,63 @@ export default function FilesScreen() {
                 {getPickerBreadcrumb()}
               </Text>
             </View>
+            {/* New Folder inline */}
+            {showPickerNewFolder ? (
+              <View style={styles.pickerNewFolderRow}>
+                <TextInput
+                  style={[
+                    styles.pickerNewFolderInput,
+                    {
+                      color: isDark ? "#f9fafb" : "#111827",
+                      backgroundColor: isDark ? "#111827" : "#f9fafb",
+                      borderColor: isDark ? "#374151" : "#e5e7eb",
+                    },
+                  ]}
+                  value={pickerNewFolderName}
+                  onChangeText={setPickerNewFolderName}
+                  placeholder="Folder name"
+                  placeholderTextColor={isDark ? "#6b7280" : "#9ca3af"}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.pickerNewFolderBtn,
+                    { backgroundColor: "#10b981" },
+                  ]}
+                  onPress={handleCreatePickerFolder}
+                >
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.pickerNewFolderBtn,
+                    { backgroundColor: isDark ? "#374151" : "#e5e7eb" },
+                  ]}
+                  onPress={() => {
+                    setShowPickerNewFolder(false);
+                    setPickerNewFolderName("");
+                  }}
+                >
+                  <Ionicons
+                    name="close"
+                    size={18}
+                    color={isDark ? "#d1d5db" : "#374151"}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.pickerNewFolderLink}
+                onPress={() => setShowPickerNewFolder(true)}
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />
+                <Text
+                  style={{ color: "#3b82f6", fontSize: 13, fontWeight: "500" }}
+                >
+                  New Folder
+                </Text>
+              </TouchableOpacity>
+            )}
             <FlatList
               data={pickerFolders}
               keyExtractor={(item) => item.path}
@@ -674,6 +875,48 @@ const styles = StyleSheet.create({
   downloadBtn: { padding: 4 },
   list: { paddingTop: 8, paddingBottom: 80 },
   emptyList: { flex: 1 },
+  fabOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  fabMenuContainer: {
+    position: "absolute",
+    right: 20,
+    bottom: 86,
+    alignItems: "flex-end",
+    gap: 10,
+  },
+  fabMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  fabMenuIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  fabMenuLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    color: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
   fab: {
     position: "absolute",
     right: 20,
@@ -681,7 +924,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#3b82f6",
     justifyContent: "center",
     alignItems: "center",
     elevation: 6,
@@ -782,4 +1025,33 @@ const styles = StyleSheet.create({
   },
   pickerRowText: { fontSize: 15, flex: 1 },
   pickerEmpty: { fontSize: 13, textAlign: "center", paddingVertical: 20 },
+  pickerNewFolderLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  pickerNewFolderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+    paddingVertical: 4,
+  },
+  pickerNewFolderInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  pickerNewFolderBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

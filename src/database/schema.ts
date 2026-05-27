@@ -1,6 +1,6 @@
-import { type SQLiteDatabase } from 'expo-sqlite';
+import { type SQLiteDatabase } from "expo-sqlite";
 
-export const DATABASE_NAME = 'devsnippets.db';
+export const DATABASE_NAME = "devsnippets.db";
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`PRAGMA journal_mode = WAL;`);
@@ -13,6 +13,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       code TEXT NOT NULL,
       language TEXT NOT NULL DEFAULT 'plaintext',
       tags TEXT DEFAULT '[]',
+      folder_path TEXT DEFAULT NULL,
       is_favorite INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
@@ -30,6 +31,17 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       FOREIGN KEY (snippet_id) REFERENCES snippets(id) ON DELETE CASCADE
     );
   `);
+
+  // Migration: add folder_path column if missing (for existing installs)
+  await db
+    .execAsync(
+      `
+    ALTER TABLE snippets ADD COLUMN folder_path TEXT DEFAULT NULL;
+  `,
+    )
+    .catch(() => {
+      // Column already exists — ignore
+    });
 
   // FTS5 virtual table for full-text search
   await db.execAsync(`
