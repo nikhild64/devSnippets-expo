@@ -4,19 +4,13 @@ A modern developer-focused mobile application built with Expo, React Native, and
 
 ## Demo Video
 
-> _[Add your demo video link here]_
+[🎬 Watch Demo Video](assets/recording/recording%20dev%20snippets.webm)
 
 ## Screenshots
 
-> _[Add screenshots of each screen here]_
-
-| Home | Create Snippet | Snippet Detail | Favorites |
-| ---- | -------------- | -------------- | --------- |
-|      |                |                |           |
-
-| File Manager | AI Explanation | Export Modal | Settings |
-| ------------ | -------------- | ------------ | -------- |
-|              |                |              |          |
+| Home | Favorites | Folder | AI Usage | Settings |
+| ---- | --------- | ------ | -------- | -------- |
+| ![Home](assets/screenshots/home%20screen.png) | ![Favorites](assets/screenshots/fav%20screen.png) | ![Folder](assets/screenshots/folder.png) | ![AI Usage](assets/screenshots/AI%20usage.png) | ![Settings](assets/screenshots/setting%20screen.png) |
 
 ## Features
 
