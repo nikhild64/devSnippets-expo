@@ -4,7 +4,7 @@ A modern developer-focused mobile application built with Expo, React Native, and
 
 ## Demo Video
 
-[🎬 Watch Demo Video](assets/recording/recording%20dev%20snippets.webm)
+[🎬 Watch Demo Video](assets/recording/recording%20dev%20snippets.mp4)
 
 ## Screenshots
 
