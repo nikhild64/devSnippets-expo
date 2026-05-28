@@ -30,6 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# large video files
+*.webm
+
 # local env files
 .env*.local
 
