@@ -8,8 +8,8 @@ A modern developer-focused mobile application built with Expo, React Native, and
 
 ## Screenshots
 
-| Home | Favorites | Folder | AI Usage | Settings |
-| ---- | --------- | ------ | -------- | -------- |
+| Home                                          | Favorites                                         | Folder                                   | AI Usage                                       | Settings                                             |
+| --------------------------------------------- | ------------------------------------------------- | ---------------------------------------- | ---------------------------------------------- | ---------------------------------------------------- |
 | ![Home](assets/screenshots/home%20screen.png) | ![Favorites](assets/screenshots/fav%20screen.png) | ![Folder](assets/screenshots/folder.png) | ![AI Usage](assets/screenshots/AI%20usage.png) | ![Settings](assets/screenshots/setting%20screen.png) |
 
 ## Features
@@ -18,8 +18,11 @@ A modern developer-focused mobile application built with Expo, React Native, and
 - **Full-Text Search** — FTS5-powered search across titles, code, and tags
 - **Offline Storage** — All data stored locally via SQLite; works without internet
 - **File Manager** — Browse, create folders, move/copy files, download resources, and attach screenshots to snippets
+- **Snippet–Folder Linking** — Link snippets to folders; auto-exports code files when saved. Folder badge shown on cards and detail view
+- **Long-Press Actions** — Long-press snippet cards for quick Edit, Move to Folder, or Delete
 - **AI Code Explanation** — Generate explanations, summaries, and improvement suggestions using Google Gemini
-- **Export & Sharing** — Export snippets as `.txt`, `.js`, or `.json`; share with other apps
+- **Export & Sharing** — Export snippets as `.txt`, `.js`, or `.json`; save directly to phone storage or share with other apps
+- **Camera & Photo Attachments** — Attach screenshots from photo library or capture directly with camera
 - **Theming** — Light, dark, and system theme modes
 - **Clipboard Copy** — One-tap copy of code blocks
 
@@ -35,6 +38,8 @@ A modern developer-focused mobile application built with Expo, React Native, and
 | SecureStore          | Gemini API key storage              |
 | Expo FileSystem      | Local file management               |
 | Expo Router          | File-based navigation               |
+| Expo ImagePicker     | Camera & photo library attachments  |
+| Expo Sharing         | Share/export to other apps          |
 | Google Generative AI | AI-powered code analysis            |
 
 ## Project Structure
@@ -92,6 +97,7 @@ SQLite database (`devsnippets.db`) with WAL journaling and foreign keys enabled.
 | language    | TEXT          | Programming language (default: `plaintext`) |
 | tags        | TEXT          | JSON array of tag strings (default: `[]`)   |
 | is_favorite | INTEGER       | 0 or 1 (default: 0)                         |
+| folder_path | TEXT          | Linked folder path (default: NULL)          |
 | created_at  | TEXT          | ISO timestamp                               |
 | updated_at  | TEXT          | ISO timestamp                               |
 
@@ -131,7 +137,8 @@ File management is built on top of `expo-file-system` and operates entirely with
 - **Move & Copy** — A folder picker modal lets users select a destination. Uses `moveAsync` / `copyAsync`.
 - **Delete** — Items are deleted with `deleteAsync` after user confirmation.
 - **Download** — Users can download files from a URL using `downloadAsync`, saved to the current directory.
-- **Screenshot attachments** — `expo-image-picker` lets users attach images to snippets. Files are copied to `attachments/{snippetId}/` and tracked in the `attachments` table.
+- **Screenshot attachments** — `expo-image-picker` lets users attach images to snippets via photo library or camera capture. Files are copied to `attachments/{snippetId}/` and tracked in the `attachments` table.
+- **New Folder in pickers** — All folder picker modals include an inline "New Folder" button to create folders without leaving the picker.
 
 ## AI Integration Workflow
 
@@ -139,7 +146,7 @@ File management is built on top of `expo-file-system` and operates entirely with
 2. The AI Explanation screen opens with three action modes: **Explain**, **Summarize**, and **Improve**.
 3. User selects an action and taps **Generate**.
 4. The app retrieves the Gemini API key from `SecureStore`.
-5. A tailored prompt is sent to `gemini-2.0-flash` via the `@google/generative-ai` SDK.
+5. A tailored prompt is sent to `gemini-3.5-flash` via the `@google/generative-ai` SDK.
 6. The response is displayed in a styled result box with selectable text.
 7. Errors (missing key, invalid key, network failure) are caught and shown as user-friendly messages.
 
@@ -152,6 +159,11 @@ File management is built on top of `expo-file-system` and operates entirely with
 - **Configurable sort order** — Sort snippets by recently updated, recently created, title A-Z, or oldest first
 - **Download manager** — Download files from URLs directly into the file manager
 - **Move/Copy with folder picker** — Visual folder navigation to pick a destination for move/copy operations
+- **Snippet–Folder linking** — Link snippets to folders with auto-export; folder badges shown on snippet cards and detail view
+- **Long-press quick actions** — Long-press snippet cards on Home and Favorites for Edit, Move to Folder, or Delete
+- **Save to Phone** — Export files directly to the device's file system using Android StorageAccessFramework or iOS share sheet
+- **Inline folder creation** — Create new folders without leaving folder picker modals
+- **Camera capture** — Take photos directly from the camera to attach to snippets
 
 ## Getting Started
 
